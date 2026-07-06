@@ -1,0 +1,18 @@
+{
+  "thresholds": {
+    "brute_force_failures": 5,
+    "port_scan_ports": 8,
+    "exfiltration_bytes": 100000000
+  },
+  "correlation": {
+    "window_minutes": 60
+  },
+  "allowlists": {
+    "trusted_scanner_ips": ["198.51.100.25"],
+    "trusted_source_ips": []
+  },
+  "rules": {
+    "disabled": [],
+    "score_overrides": {}
+  }
+}

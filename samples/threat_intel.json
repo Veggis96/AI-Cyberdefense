@@ -1,0 +1,26 @@
+{
+  "indicators": [
+    {
+      "type": "ip",
+      "value": "203.0.113.200",
+      "threat": "suspected exfiltration endpoint",
+      "confidence": "high",
+      "source": "local-lab-feed",
+      "description": "Training indicator for suspicious outbound transfer tests."
+    },
+    {
+      "type": "domain",
+      "value": "malicious.example",
+      "threat": "command and control domain",
+      "confidence": "medium",
+      "source": "local-lab-feed"
+    },
+    {
+      "type": "hash",
+      "value": "44d88612fea8a8f36de82e1278abb02f",
+      "threat": "known malware test hash",
+      "confidence": "high",
+      "source": "local-lab-feed"
+    }
+  ]
+}

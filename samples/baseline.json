@@ -1,0 +1,20 @@
+{
+  "assets": {
+    "web-01": {
+      "common_ports": [80, 443],
+      "max_bytes_out": 50000000
+    },
+    "fileserver-01": {
+      "common_ports": [445],
+      "max_bytes_out": 75000000
+    }
+  },
+  "users": {
+    "admin": {
+      "login_hours": [8, 9, 10, 11, 12, 13, 14, 15, 16]
+    },
+    "alice": {
+      "login_hours": [8, 9, 10, 11, 12, 13, 14, 15, 16, 17]
+    }
+  }
+}

@@ -1,0 +1,16 @@
+{"timestamp":"2026-07-02T12:00:00Z","source_ip":"203.0.113.10","event_type":"auth_failure","username":"admin","asset":"vpn-01","asset_criticality":"high"}
+{"timestamp":"2026-07-02T12:00:04Z","source_ip":"203.0.113.10","event_type":"auth_failure","username":"admin","asset":"vpn-01","asset_criticality":"high"}
+{"timestamp":"2026-07-02T12:00:08Z","source_ip":"203.0.113.10","event_type":"auth_failure","username":"admin","asset":"vpn-01","asset_criticality":"high"}
+{"timestamp":"2026-07-02T12:00:12Z","source_ip":"203.0.113.10","event_type":"auth_failure","username":"admin","asset":"vpn-01","asset_criticality":"high"}
+{"timestamp":"2026-07-02T12:00:16Z","source_ip":"203.0.113.10","event_type":"auth_failure","username":"admin","asset":"vpn-01","asset_criticality":"high"}
+{"timestamp":"2026-07-02T12:03:00Z","source_ip":"198.51.100.25","destination_ip":"10.0.0.5","event_type":"network_connection","asset":"web-01","asset_criticality":"medium","details":{"destination_port":21}}
+{"timestamp":"2026-07-02T12:03:01Z","source_ip":"198.51.100.25","destination_ip":"10.0.0.5","event_type":"network_connection","asset":"web-01","asset_criticality":"medium","details":{"destination_port":22}}
+{"timestamp":"2026-07-02T12:03:02Z","source_ip":"198.51.100.25","destination_ip":"10.0.0.5","event_type":"network_connection","asset":"web-01","asset_criticality":"medium","details":{"destination_port":23}}
+{"timestamp":"2026-07-02T12:03:03Z","source_ip":"198.51.100.25","destination_ip":"10.0.0.5","event_type":"network_connection","asset":"web-01","asset_criticality":"medium","details":{"destination_port":25}}
+{"timestamp":"2026-07-02T12:03:04Z","source_ip":"198.51.100.25","destination_ip":"10.0.0.5","event_type":"network_connection","asset":"web-01","asset_criticality":"medium","details":{"destination_port":53}}
+{"timestamp":"2026-07-02T12:03:05Z","source_ip":"198.51.100.25","destination_ip":"10.0.0.5","event_type":"network_connection","asset":"web-01","asset_criticality":"medium","details":{"destination_port":80}}
+{"timestamp":"2026-07-02T12:03:06Z","source_ip":"198.51.100.25","destination_ip":"10.0.0.5","event_type":"network_connection","asset":"web-01","asset_criticality":"medium","details":{"destination_port":443}}
+{"timestamp":"2026-07-02T12:03:07Z","source_ip":"198.51.100.25","destination_ip":"10.0.0.5","event_type":"network_connection","asset":"web-01","asset_criticality":"medium","details":{"destination_port":8080}}
+{"timestamp":"2026-07-02T12:05:00Z","source_ip":"10.0.0.20","event_type":"edr_detection","asset":"workstation-22","asset_criticality":"medium","details":{"indicator":"credential dumping behavior"}}
+{"timestamp":"2026-07-02T12:08:00Z","source_ip":"10.0.0.30","destination_ip":"203.0.113.200","event_type":"data_transfer","asset":"fileserver-01","asset_criticality":"critical","details":{"bytes_out":250000000,"destination_reputation":"unknown"}}
+{"timestamp":"2026-07-02T12:10:00Z","source_ip":"192.0.2.44","destination_ip":"10.0.0.5","event_type":"http_request","asset":"web-01","asset_criticality":"high","details":{"path":"/products?id=1%27%20or%20%271%27=%271"}}

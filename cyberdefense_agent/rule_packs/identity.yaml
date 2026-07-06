@@ -1,0 +1,13 @@
+rules:
+  - name: Identity Admin Username Failure
+    attack_type: identity_admin_probe
+    event_type: auth_failure
+    tactic: credential_access
+    technique_id: T1110
+    confidence: medium
+    base_score: 40
+    summary: Failed authentication attempt against administrative username on {asset}
+    conditions:
+      - field: username
+        contains: admin
+

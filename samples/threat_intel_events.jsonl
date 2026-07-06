@@ -1,0 +1,2 @@
+{"timestamp":"2026-07-02T13:00:00Z","source_ip":"10.0.0.30","destination_ip":"203.0.113.200","event_type":"network_connection","asset":"fileserver-01","asset_criticality":"critical","details":{"destination_port":443}}
+{"timestamp":"2026-07-02T13:05:00Z","source_ip":"10.0.0.20","event_type":"edr_detection","asset":"workstation-22","asset_criticality":"high","details":{"file_hash":"44d88612fea8a8f36de82e1278abb02f","indicator":"suspicious executable"}}

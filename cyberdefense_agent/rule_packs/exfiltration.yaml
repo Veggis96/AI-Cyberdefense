@@ -1,0 +1,12 @@
+rules:
+  - name: Exfiltration Large Transfer Review
+    attack_type: exfiltration_large_transfer_review
+    event_type: data_transfer
+    tactic: exfiltration
+    technique_id: T1041
+    confidence: medium
+    base_score: 54
+    summary: Large transfer requiring exfiltration review from {asset}
+    conditions:
+      - field: details.bytes_out
+        min: 50000000

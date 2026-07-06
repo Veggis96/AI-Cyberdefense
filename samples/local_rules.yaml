@@ -1,0 +1,24 @@
+rules:
+  - name: Suspicious Curl Download
+    attack_type: suspicious_download
+    event_type: process_creation
+    tactic: execution
+    technique_id: T1059
+    confidence: medium
+    base_score: 52
+    summary: Suspicious curl execution on {asset}
+    conditions:
+      - field: details.command_line
+        contains: curl
+
+  - name: Large Transfer To Review
+    attack_type: large_transfer_review
+    event_type: data_transfer
+    tactic: exfiltration
+    technique_id: T1041
+    confidence: medium
+    base_score: 50
+    summary: Large outbound transfer from {asset}
+    conditions:
+      - field: details.bytes_out
+        min: 50000000

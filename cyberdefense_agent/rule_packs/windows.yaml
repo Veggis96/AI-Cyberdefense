@@ -1,0 +1,13 @@
+rules:
+  - name: Windows Certutil Download
+    attack_type: windows_suspicious_download
+    event_type: process_creation
+    tactic: execution
+    technique_id: T1105
+    confidence: medium
+    base_score: 58
+    summary: Certutil download-like command on {asset}
+    conditions:
+      - field: details.command_line
+        contains: certutil
+

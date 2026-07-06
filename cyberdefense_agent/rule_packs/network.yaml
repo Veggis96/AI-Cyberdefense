@@ -1,0 +1,13 @@
+rules:
+  - name: Network SSH Probe
+    attack_type: network_ssh_probe
+    event_type: network_connection
+    tactic: discovery
+    technique_id: T1046
+    confidence: medium
+    base_score: 36
+    summary: SSH connection probe against {asset}
+    conditions:
+      - field: details.destination_port
+        equals: 22
+

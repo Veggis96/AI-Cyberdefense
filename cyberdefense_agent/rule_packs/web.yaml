@@ -1,0 +1,13 @@
+rules:
+  - name: Web Admin Probe
+    attack_type: web_admin_probe
+    event_type: http_request
+    tactic: discovery
+    technique_id: T1595
+    confidence: medium
+    base_score: 38
+    summary: Administrative web path probe on {asset}
+    conditions:
+      - field: details.path
+        contains: /admin
+
