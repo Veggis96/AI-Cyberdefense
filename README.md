@@ -1,48 +1,109 @@
 # AI Cyberdefense Agent
 
-A lab-safe defensive agent that analyzes security events, detects likely attacks, and recommends containment actions.
+AI Cyberdefense Agent is a local, lab-safe defensive security tool for analyzing security events, detecting suspicious activity, and producing analyst-friendly investigation output. It is designed for learning and portfolio demonstration, with dry-run response planning by default.
 
-This version focuses on blue-team workflows:
+The project demonstrates Python CLI development, event parsing, detection rules, incident scoring, local persistence, reporting, and security workflow design.
 
-- Detect brute force login attempts, port scans, malware indicators, data exfiltration, web attack probes, and high-signal cloud/SaaS identity activity.
-- Parse JSONL, CSV exports, nginx access logs, AWS CloudTrail, Azure AD, Okta, and Microsoft 365 audit logs into one normalized event model.
-- Score each finding by severity, confidence, and asset criticality.
-- Map incidents to defensive context such as tactic, technique ID, assets, sources, and timeline.
-- Suppress known-good sources such as approved vulnerability scanners.
-- Correlate related incidents into higher-level campaigns.
-- Build campaign investigation timelines and analyst assessment prompts.
-- Build incident-level investigation assessments with supporting evidence, missing context, analyst questions, confidence review, and response readiness.
-- Persist incidents to SQLite memory for repeat-source and repeat-asset awareness.
-- Build long-term entity profiles for sources, users, assets, domains, hashes, and URLs.
-- Use entity profile history to adjust later incident scores and risk signals.
-- Persist lightweight cases linked to stored incidents.
-- Generate approval-gated countermeasure proposals for human review.
-- Detect baseline anomalies such as rare ports, odd login hours, and transfer spikes.
-- Enrich incidents with risk signals such as critical assets, repeated activity, and prior analyst feedback.
-- Produce explainable incident reports with dry-run response plans.
-- Run in dry-run mode by default. It does not block IPs, kill processes, or change firewall rules.
+## Problem The Project Solves
+
+Security analysts often need to normalize logs from different systems, identify high-signal activity, and explain why an alert matters. This project simulates that workflow locally without connecting to production systems or taking destructive action.
+
+## Key Features
+
+- Parses JSONL, CSV exports, nginx access logs, AWS CloudTrail-style events, Azure AD-style sign-ins, Okta-style events, and Microsoft 365 audit-style events.
+- Normalizes events into a shared internal model.
+- Detects brute force activity, port scans, malware indicators, data exfiltration, web attack probes, cloud identity signals, and suspicious Windows activity.
+- Scores incidents using severity, confidence, asset criticality, memory context, and entity history.
+- Maps detections to tactics and technique IDs where supported by the rule.
+- Supports bundled detection rule packs for Windows, web, identity, network, and exfiltration examples.
+- Stores incident memory, analyst feedback, triage state, cases, entity profiles, and approval decisions in SQLite.
+- Generates text, JSON, Markdown response bundles, and static HTML dashboard reports.
+- Runs in dry-run mode by default and does not block IPs, kill processes, or change firewall rules.
+
+## Demo And Screenshots
+
+Screenshots are not committed yet. Recommended screenshots to add under `docs/images/`:
+
+- `dashboard-overview.png`: HTML report showing incident count, severity, and top findings.
+- `json-output.png`: terminal output from a `--json` run.
+- `triage-workflow.png`: terminal output showing triage or case state updates.
+- `approval-review.png`: terminal output showing pending response proposals.
+
+Example dashboard command:
+
+```powershell
+python -m cyberdefense_agent --events samples/events.jsonl --html-report reports/report.html
+```
+
+## Architecture
+
+```mermaid
+flowchart LR
+    A["Sample logs and event exports"] --> B["Parsers"]
+    B --> C["Normalized SecurityEvent model"]
+    C --> D["Detection rules and rule packs"]
+    D --> E["Incident scoring and investigations"]
+    E --> F["SQLite memory"]
+    F --> E
+    E --> G["Text and JSON output"]
+    E --> H["HTML dashboard"]
+    E --> I["Dry-run response bundle"]
+    F --> J["Feedback, triage, cases, entities, approvals"]
+```
+
+## Technology Stack
+
+- Python 3.10+
+- Standard-library CLI with `argparse`
+- SQLite for local incident memory
+- JSON, JSONL, CSV, YAML-style rule files, nginx-style logs
+- HTML report generation
+- `unittest` test suite
+
+The project intentionally keeps runtime dependencies minimal.
+
+## Project Structure
+
+```text
+cyberdefense_agent/         Python package and CLI implementation
+cyberdefense_agent/rule_packs/
+                            Bundled example detection packs
+samples/                    Synthetic sample events, logs, config and rules
+tests/                      Automated unittest test suite
+docs/images/                Placeholder location for real screenshots
+README.md                   Project documentation
+pyproject.toml              Local package metadata
+```
+
+## Prerequisites
+
+- Python 3.10 or newer
+- PowerShell, Bash, or another terminal
+
+## Installation
+
+From a clean clone:
+
+```powershell
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+python -m pip install -e .
+```
+
+On macOS/Linux:
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install -e .
+```
 
 ## Quick Start
 
+Run the default sample:
+
 ```powershell
 python -m cyberdefense_agent --events samples/events.jsonl
-```
-
-Parse real-ish logs:
-
-```powershell
-python -m cyberdefense_agent --events samples/nginx_access.log --format nginx
-python -m cyberdefense_agent --events samples/windows_security.csv --format csv
-python -m cyberdefense_agent --events samples/cloudtrail.json --format aws_cloudtrail
-python -m cyberdefense_agent --events samples/azure_signins.json --format azure_ad
-python -m cyberdefense_agent --events samples/okta_events.json --format okta
-python -m cyberdefense_agent --events samples/m365_audit.json --format m365
-```
-
-Use a config file for thresholds and allowlists:
-
-```powershell
-python -m cyberdefense_agent --events samples/events.jsonl --config samples/config.json
 ```
 
 Machine-readable output:
@@ -51,28 +112,41 @@ Machine-readable output:
 python -m cyberdefense_agent --events samples/events.jsonl --json
 ```
 
-JSON and dashboard incident records include `rule_name` and `explanation` fields so analysts can see the threshold, observed value, indicator, or event attribute that caused a rule to fire.
+Generate an HTML report:
 
-The CLI also reports import diagnostics. Malformed JSONL or nginx log lines are skipped, counted, and included under `import_diagnostics` in JSON output and in the HTML dashboard.
+```powershell
+python -m cyberdefense_agent --events samples/events.jsonl --html-report reports/report.html
+```
 
-Store incidents in local memory:
+Use local memory:
 
 ```powershell
 python -m cyberdefense_agent --events samples/events.jsonl --memory-db data/incidents.sqlite
 ```
 
-Stored analyst feedback is used as context for later matching incidents. Prior `false_positive`, `benign`, or `expected` verdicts lower the later score, while prior `true_positive` verdicts raise it. The score adjustment and matched feedback are included in text, JSON, and dashboard-ready incident records.
-
-Entity profile history also affects later incidents. Repeated source IPs, assets, or users add bounded score context and appear as `entity_*_history` risk signals.
-
-Inspect entity profiles from memory:
+Use bundled rule packs:
 
 ```powershell
-python -m cyberdefense_agent entity list --memory-db data/incidents.sqlite --type source_ip
-python -m cyberdefense_agent entity show --memory-db data/incidents.sqlite --type asset --value fileserver-01
+python -m cyberdefense_agent --events samples/events.jsonl --rule-pack windows --rule-pack identity
+python -m cyberdefense_agent rule-pack list
+python -m cyberdefense_agent rule-pack show --name windows
 ```
 
-Use a baseline for anomaly detection:
+## Usage Examples
+
+Parse nginx-style access logs:
+
+```powershell
+python -m cyberdefense_agent --events samples/nginx_access.log --format nginx
+```
+
+Parse Windows-style CSV events:
+
+```powershell
+python -m cyberdefense_agent --events samples/windows_security.csv --format csv
+```
+
+Use a baseline:
 
 ```powershell
 python -m cyberdefense_agent --events samples/baseline_events.jsonl --baseline samples/baseline.json
@@ -84,224 +158,61 @@ Use local threat intelligence:
 python -m cyberdefense_agent --events samples/threat_intel_events.jsonl --threat-intel samples/threat_intel.json
 ```
 
-Record analyst feedback:
-
-```powershell
-python -m cyberdefense_agent feedback add --memory-db data/incidents.sqlite --incident-id 1 --verdict false_positive --note "Approved scanner"
-python -m cyberdefense_agent feedback list --memory-db data/incidents.sqlite
-```
-
-Track incident triage state:
-
-```powershell
-python -m cyberdefense_agent triage list --memory-db data/incidents.sqlite
-python -m cyberdefense_agent triage set --memory-db data/incidents.sqlite --incident-id 1 --state investigating --note "Checking owner context"
-```
-
-Track investigation cases created from stored reports:
-
-```powershell
-python -m cyberdefense_agent case list --memory-db data/incidents.sqlite
-python -m cyberdefense_agent case set --memory-db data/incidents.sqlite --case-id 1 --state investigating --owner alice --priority high --note "Initial owner assigned"
-```
-
-Review countermeasure proposals:
+Review approvals:
 
 ```powershell
 python -m cyberdefense_agent approvals list --memory-db data/incidents.sqlite --state pending
-python -m cyberdefense_agent approvals approve --memory-db data/incidents.sqlite --approval-id 1 --by alice --note "Reviewed in SOC"
-python -m cyberdefense_agent approvals reject --memory-db data/incidents.sqlite --approval-id 2 --by alice --note "Known scanner"
-python -m cyberdefense_agent approvals export --memory-db data/incidents.sqlite --state approved --output reports/approved-actions.md
 ```
-
-Generate a static dashboard:
-
-```powershell
-python -m cyberdefense_agent --events samples/events.jsonl --html-report reports/report.html
-```
-
-Load local JSON/YAML detection rules:
-
-```powershell
-python -m cyberdefense_agent --events samples/events.jsonl --rules samples/local_rules.yaml
-```
-
-Load bundled detection packs:
-
-```powershell
-python -m cyberdefense_agent --events samples/events.jsonl --rule-pack windows
-python -m cyberdefense_agent --events samples/events.jsonl --rule-pack web
-python -m cyberdefense_agent --events samples/events.jsonl --rule-pack identity --rule-pack network
-python -m cyberdefense_agent rule-pack list
-python -m cyberdefense_agent rule-pack show --name windows
-```
-
-Available packs are `windows`, `web`, `identity`, `network`, and `exfiltration`. Use `--json` with `rule-pack list` or `rule-pack show` for automation-friendly inventory output.
-
-Built-in cloud/SaaS detections include AWS root console logins, AWS access key creation, cloud failed-login spikes, Okta MFA factor activation, Okta admin role assignment, and Microsoft 365 OAuth application consent.
-
-Write a dry-run response handoff bundle for ticketing, chat, or firewall review:
-
-```powershell
-python -m cyberdefense_agent --events samples/events.jsonl --response-bundle reports/response.json
-python -m cyberdefense_agent --events samples/events.jsonl --response-bundle reports/response.md
-```
-
-Response bundles include investigation rationale, readiness state, and countermeasure proposals such as ticket creation, SIEM searches, firewall review, WAF review, endpoint isolation review, and identity review. These are command previews only; approving a proposal records the human decision and still does not execute the command. Approved proposals can be exported as Markdown or JSON handoff files.
 
 Run continuously against a growing event file:
 
 ```powershell
 python -m cyberdefense_agent watch --events samples/events.jsonl --interval 5
-python -m cyberdefense_agent watch --events samples/events.jsonl --watch-state data/watch-state.json
 ```
 
-Watch mode persists incident fingerprints in a JSON state file, so restarting the watcher does not re-announce the same incidents. When reports are stored in SQLite memory, related activity is merged into existing open cases and duplicate pending approvals are suppressed.
-
-Run tests:
+## Testing
 
 ```powershell
 python -m unittest discover -s tests
 ```
 
-## Event Format
+The test suite covers CLI behavior, parsers, detection rules, custom rules, dashboards, entity memory, response export, and threat intelligence.
 
-The agent normalizes multiple input formats into one internal event model.
+## Security And Privacy Considerations
 
-JSON Lines:
+- This is a defensive lab and portfolio project.
+- The included sample data is synthetic and should not contain real user data or production logs.
+- The tool runs in dry-run mode and does not execute firewall, endpoint, or identity-provider changes.
+- SQLite files, generated reports, and real log files should not be committed if they contain sensitive information.
+- Review any imported logs before sharing screenshots, reports, or JSON output publicly.
 
-```json
-{"timestamp":"2026-07-02T12:00:00Z","source_ip":"203.0.113.10","event_type":"auth_failure","username":"admin","asset":"vpn-01","asset_criticality":"high"}
-```
+## Current Limitations
 
-CSV exports can use common field names such as `TimeCreated`, `EventID`, `IpAddress`, `AccountName`, and `Computer`. Windows Event ID `4625` is normalized to `auth_failure`, while `4624` is normalized to `auth_success`. The parser also recognizes high-signal Windows security events including `4688` process creation, `4672` privileged logon, `4720` user creation, `7045` service installation, and `1102` audit log cleared. Windows fields such as `CommandLine`, `NewProcessName`, `ParentProcessName`, `ServiceName`, `ServiceFileName`, `SubjectUserName`, and `TargetUserName` are preserved as canonical event details for rule explanations.
+- Detection logic is rule-based and intended for learning, not a replacement for a production SIEM.
+- Cloud/SaaS parsers use simplified local sample formats.
+- Response actions are recommendations and approval records only.
+- The project does not include authentication, multi-user access control, or production deployment hardening.
 
-Nginx access logs are normalized to `http_request` events with request details under `details`.
+## Future Improvements
 
-## Baseline Format
+- Add more realistic sample datasets and parser fixtures.
+- Add richer MITRE ATT&CK documentation per rule pack.
+- Add dashboard screenshots and a short demo GIF.
+- Add packaging and release notes for easier installation.
+- Add optional integrations for SIEM export formats while keeping dry-run behavior safe.
 
-```json
-{
-  "assets": {
-    "web-01": {
-      "common_ports": [80, 443],
-      "max_bytes_out": 50000000
-    }
-  },
-  "users": {
-    "admin": {
-      "login_hours": [8, 9, 10, 11, 12, 13, 14, 15, 16]
-    }
-  }
-}
-```
+## What I Learned
 
-## Threat Intel Format
+- Designing normalized event models across different log sources.
+- Building explainable detection rules and analyst-facing output.
+- Using SQLite for local security workflow state.
+- Balancing automation with human approval in defensive tooling.
+- Writing tests around CLI behavior, parsing, scoring, reporting, and persistence.
 
-```json
-{
-  "indicators": [
-    {
-      "type": "ip",
-      "value": "203.0.113.200",
-      "threat": "suspected exfiltration endpoint",
-      "confidence": "high",
-      "source": "local-lab-feed"
-    }
-  ]
-}
-```
+## AI-Assisted Development
 
-Supported indicator types are `ip`, `domain`, `hash`, and `url`.
+This project was developed iteratively with the support of AI-assisted development tools. I defined and refined the project goals, requirements, architecture, technology choices and functionality, while reviewing, testing and improving the resulting implementation.
 
-## Config Format
+## License
 
-```json
-{
-  "thresholds": {
-    "brute_force_failures": 5,
-    "port_scan_ports": 8,
-    "exfiltration_bytes": 100000000
-  },
-  "correlation": {
-    "window_minutes": 60
-  },
-  "allowlists": {
-    "trusted_scanner_ips": ["198.51.100.25"],
-    "trusted_source_ips": []
-  },
-  "rules": {
-    "disabled": ["port_scan"],
-    "score_overrides": {
-      "DataExfiltrationRule": 80
-    }
-  }
-}
-```
-
-Rules can be referenced by attack type such as `port_scan` or by rule class name such as `DataExfiltrationRule`.
-
-## Local Rule Format
-
-Local rules extend the built-in detections without changing Python code. Rule files can be JSON or simple YAML:
-
-```yaml
-rules:
-  - name: Suspicious Curl Download
-    attack_type: suspicious_download
-    event_type: process_creation
-    tactic: execution
-    technique_id: T1059
-    confidence: medium
-    base_score: 52
-    summary: Suspicious curl execution on {asset}
-    conditions:
-      - field: details.command_line
-        contains: curl
-```
-
-Supported condition operators are `equals`, `contains`, `regex`, and `min`.
-
-Standalone Sigma-like YAML documents are also supported for a practical subset:
-
-```yaml
-title: Suspicious PowerShell Or Certutil
-description: Suspicious process execution
-tags: [attack.execution, attack.t1059]
-level: high
-detection:
-  selection_powershell:
-    EventID: 4688
-    CommandLine|contains|all: [powershell, encodedcommand]
-  selection_certutil:
-    EventID: 4688
-    Image|endswith: certutil.exe
-  condition: selection_powershell or selection_certutil
-```
-
-Supported Sigma features include `EventID` mapping, field modifiers such as `|contains`, `|contains|all`, `|endswith`, and `|startswith`, and simple `selection1 or selection2` / `selection and not filter` conditions.
-
-## Current Agent Loop
-
-1. Ingest JSONL events.
-2. Parse source-specific logs.
-3. Normalize records into `SecurityEvent`.
-4. Run detection rules.
-5. Suppress known-good findings from config.
-6. Deduplicate repeated findings with the same type, rule, source, and asset.
-7. Enrich incidents with risk signals.
-8. Apply feedback-aware and entity-aware memory context when memory is enabled.
-9. Score and rank incidents.
-10. Correlate related incidents into campaigns.
-11. Build campaign investigation timelines and analyst assessments.
-12. Attach defensive context and response actions.
-13. Build incident investigation assessments, confidence review, missing-context prompts, and response readiness labels.
-14. Generate approval-gated countermeasure proposals.
-15. Optionally persist incident memory, update entity profiles, merge related cases, suppress duplicate approvals, and apply prior analyst feedback.
-16. Optionally write an interactive HTML dashboard.
-17. Optionally write a dry-run response handoff bundle.
-18. Emit a human report or JSON for another system.
-
-## Safety Boundary
-
-This project is for defensive monitoring, analysis, and training. Response actions are recommendations unless you explicitly add an approved integration layer later. Approval commands record human decisions; they do not run firewall, endpoint, identity, WAF, SIEM, or ticketing commands.
+No license is currently included. MIT License is a good fit if the goal is to let others use, copy, modify, and share the code with attribution and without warranty.
