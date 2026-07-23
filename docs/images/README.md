@@ -2,11 +2,11 @@
 
 Add real screenshots here before using the project in applications or portfolio pages.
 
-Recommended images:
+Use these consistent names:
 
-- `dashboard-overview.png`: generated HTML dashboard with one or more incidents.
-- `json-output.png`: terminal showing `python -m cyberdefense_agent --events samples/events.jsonl --json`.
-- `triage-workflow.png`: terminal showing triage or case state commands.
-- `approval-review.png`: terminal showing pending approval-gated response proposals.
+- `dashboard.png`: generated HTML dashboard with one or more incidents.
+- `incidents.png`: incident list with severity, confidence, affected assets, and sources.
+- `detection-details.png`: selected detection with MITRE ATT&CK mapping, evidence, and recommended actions.
+- `report.png`: generated report or response bundle suitable for analyst handoff.
 
 Do not include screenshots with real customer, employer, IP address, username, host, or security incident data.
