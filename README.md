@@ -22,18 +22,31 @@ Security analysts often need to normalize logs from different systems, identify 
 
 ## Demo And Screenshots
 
-Screenshots are not committed yet. Recommended screenshots to add under `docs/images/`:
-
-- `dashboard-overview.png`: HTML report showing incident count, severity, and top findings.
-- `json-output.png`: terminal output from a `--json` run.
-- `triage-workflow.png`: terminal output showing triage or case state updates.
-- `approval-review.png`: terminal output showing pending response proposals.
-
-Example dashboard command:
+Generate a complete demo bundle:
 
 ```powershell
-python -m cyberdefense_agent --events samples/events.jsonl --html-report reports/report.html
+python -m cyberdefense_agent demo
 ```
+
+The demo writes `reports/report.html`, `reports/response.json`, and `data/incidents.sqlite`.
+
+### Dashboard
+
+Overview of campaigns, import status, risk scoring, and active incidents.
+
+![Dashboard](docs/images/dashboard.png)
+
+### Incident List
+
+Triage queue with state, severity, affected assets, sources, and analyst notes.
+
+![Incident List](docs/images/incidents.png)
+
+### Detection Details
+
+Detection context with rule name, MITRE ATT&CK mapping, trigger values, and recommended response steps.
+
+![Detection Details](docs/images/detection-details.png)
 
 ## Architecture
 
@@ -70,7 +83,7 @@ cyberdefense_agent/rule_packs/
                             Bundled example detection packs
 samples/                    Synthetic sample events, logs, config and rules
 tests/                      Automated unittest test suite
-docs/images/                Placeholder location for real screenshots
+docs/images/                README screenshots
 README.md                   Project documentation
 pyproject.toml              Local package metadata
 ```
@@ -197,7 +210,7 @@ The test suite covers CLI behavior, parsers, detection rules, custom rules, dash
 
 - Add more realistic sample datasets and parser fixtures.
 - Add richer MITRE ATT&CK documentation per rule pack.
-- Add dashboard screenshots and a short demo GIF.
+- Add a short demo GIF.
 - Add packaging and release notes for easier installation.
 - Add optional integrations for SIEM export formats while keeping dry-run behavior safe.
 
