@@ -1,8 +1,16 @@
 # AI Cyberdefense Agent
 
-AI Cyberdefense Agent is a local, lab-safe defensive security tool for analyzing security events, detecting suspicious activity, and producing analyst-friendly investigation output. It is designed for learning and portfolio demonstration, with dry-run response planning by default.
+AI Cyberdefense Agent is a local, lab-safe SIEM/SOC-inspired portfolio project for analyzing security events, detecting suspicious activity, and producing analyst-friendly investigation output. It is the expanded successor to [Local Log Analyzer](https://github.com/Veggis96/local-log-analyzer), with dry-run response planning by default.
 
-The project demonstrates Python CLI development, event parsing, detection rules, incident scoring, local persistence, reporting, and security workflow design.
+The project demonstrates Python CLI development, event parsing, normalized security events, rule-based detection, incident scoring, SQLite persistence, reporting, and security workflow design.
+
+## Project Origins
+
+AI-Cyberdefense grew from an earlier mini-project called [Local Log Analyzer](https://github.com/Veggis96/local-log-analyzer).
+
+The original project focused on parsing local text logs, identifying common suspicious patterns, and generating basic security reports. AI-Cyberdefense expands those ideas into a more modular SIEM/SOC-inspired workflow with normalized security events, detection rule packs, incident scoring, MITRE ATT&CK context, triage, cases, entity history, response planning, SQLite persistence, and analyst-facing reports.
+
+The current runtime detection logic is rule-based and heuristic. AI-assisted tooling was used during development, but the project does not depend on an AI model at runtime.
 
 ## Problem The Project Solves
 
@@ -22,10 +30,10 @@ Security analysts often need to normalize logs from different systems, identify 
 
 ## Demo And Screenshots
 
-Generate a complete demo bundle:
+Generate a complete local demo bundle:
 
 ```powershell
-python -m cyberdefense_agent demo
+python -m cyberdefense_agent --events samples/events.jsonl --html-report reports/report.html --response-bundle reports/response.json --memory-db data/incidents.sqlite
 ```
 
 The demo writes `reports/report.html`, `reports/response.json`, and `data/incidents.sqlite`.
@@ -47,6 +55,12 @@ Triage queue with state, severity, affected assets, sources, and analyst notes.
 Detection context with rule name, MITRE ATT&CK mapping, trigger values, and recommended response steps.
 
 ![Detection Details](docs/images/detection-details.png)
+
+### Report
+
+Generated report-style output for analyst handoff.
+
+![Report](docs/images/report.png)
 
 ## Architecture
 
@@ -228,4 +242,4 @@ This project was developed iteratively with the support of AI-assisted developme
 
 ## License
 
-No license is currently included. MIT License is a good fit if the goal is to let others use, copy, modify, and share the code with attribution and without warranty.
+This project is released under the [MIT License](LICENSE).
