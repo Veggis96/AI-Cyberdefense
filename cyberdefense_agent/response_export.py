@@ -133,7 +133,7 @@ def _render_markdown(payload: dict) -> str:
                     f"- `{proposal['approval_state']}` {proposal['action_type']}: {proposal['title']}",
                     f"  - Readiness: `{proposal['readiness']}`",
                     f"  - {proposal['description']}",
-                    f"  - `{proposal['command_preview']}`",
+                    f"  - `{_escape_inline_code(proposal['command_preview'])}`",
                 ]
             )
     else:
@@ -154,3 +154,7 @@ def _control_lines(controls: list[dict]) -> list[str]:
         lines.append(f"- `{control['mode']}` {control['attack_type']}: {target}")
         lines.append(f"  - {control['recommendation']}")
     return lines
+
+
+def _escape_inline_code(value: str) -> str:
+    return value.replace("`", "'")

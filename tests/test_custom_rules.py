@@ -124,6 +124,70 @@ detection:
         )
         self.assertEqual(sigma_incident.detection.technique_id, "T1059")
 
+    def test_regex_condition_fails_closed_when_invalid(self):
+        with TemporaryDirectory(ignore_cleanup_errors=True) as directory:
+            path = Path(directory) / "rules.json"
+            path.write_text(
+                """
+{
+  "rules": [
+    {
+      "name": "Invalid Regex",
+      "event_type": "custom_event",
+      "conditions": [
+        {"field": "details.command_line", "regex": "["}
+      ]
+    }
+  ]
+}
+""",
+                encoding="utf-8",
+            )
+
+            report = DefenseAgent(extra_rules=load_local_rules([path])).analyze(
+                [
+                    SecurityEvent(
+                        timestamp="2026-07-02T12:00:00Z",
+                        event_type="custom_event",
+                        details={"command_line": "powershell.exe"},
+                    )
+                ]
+            )
+
+        self.assertEqual(report.incidents, [])
+
+    def test_regex_condition_rejects_nested_quantifiers(self):
+        with TemporaryDirectory(ignore_cleanup_errors=True) as directory:
+            path = Path(directory) / "rules.json"
+            path.write_text(
+                """
+{
+  "rules": [
+    {
+      "name": "Unsafe Regex",
+      "event_type": "custom_event",
+      "conditions": [
+        {"field": "details.command_line", "regex": "(a+)+"}
+      ]
+    }
+  ]
+}
+""",
+                encoding="utf-8",
+            )
+
+            report = DefenseAgent(extra_rules=load_local_rules([path])).analyze(
+                [
+                    SecurityEvent(
+                        timestamp="2026-07-02T12:00:00Z",
+                        event_type="custom_event",
+                        details={"command_line": "aaaaaaaaaaaaaaaaaaaaaaaaaaaa!"},
+                    )
+                ]
+            )
+
+        self.assertEqual(report.incidents, [])
+
 
 if __name__ == "__main__":
     unittest.main()

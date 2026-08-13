@@ -1,11 +1,17 @@
 __pycache__/
 *.py[cod]
+*.egg-info/
 *.sqlite
 *.db
 .pytest_cache/
 .coverage
+.coverage.*
 htmlcov/
 data/
 reports/
 .venv/
 venv/
+.terraform/
+*.tfstate
+*.tfstate.*
+terraform.tfvars

@@ -10,6 +10,10 @@ from .events import SecurityEvent
 from .rules import Detection
 
 
+MAX_REGEX_PATTERN_LENGTH = 256
+NESTED_QUANTIFIER_PATTERN = re.compile(r"\((?:[^()\\]|\\.)*[+*{](?:[^()\\]|\\.)*\)\s*[+*{]")
+
+
 @dataclass(frozen=True)
 class LocalRule:
     name: str
@@ -112,12 +116,12 @@ def _from_sigma_like(raw: dict[str, Any]) -> dict[str, Any]:
     for name in selected_names:
         selection = dict(detection.get(name) or {})
         group_conditions = []
-        for field, expected in selection.items():
-            normalized = str(field).lower()
+        for field_name, expected in selection.items():
+            normalized = str(field_name).lower()
             if normalized in {"event_type", "eventid", "event_id"}:
                 event_type = _event_type_from_sigma_event_id(expected)
                 continue
-            group_conditions.append(_sigma_condition(str(field), expected))
+            group_conditions.append(_sigma_condition(str(field_name), expected))
         if group_conditions:
             conditions.append({"all": group_conditions})
     tags = [str(tag) for tag in raw.get("tags", [])]
@@ -195,7 +199,14 @@ def _matches_condition(event: SecurityEvent, condition: dict[str, Any]) -> tuple
         return matched, {**explanation, "startswith": condition["startswith"]}
     if "regex" in condition:
         pattern = str(condition["regex"])
-        return re.search(pattern, str(value), flags=re.IGNORECASE) is not None, {
+        validation_error = _regex_validation_error(pattern)
+        if validation_error:
+            return False, {**explanation, "regex": pattern, "error": validation_error}
+        try:
+            matched = re.search(pattern, str(value), flags=re.IGNORECASE) is not None
+        except re.error as exc:
+            return False, {**explanation, "regex": pattern, "error": f"invalid regex: {exc}"}
+        return matched, {
             **explanation,
             "regex": pattern,
         }
@@ -391,6 +402,14 @@ def _safe_float(value: Any) -> float | None:
         return float(value)
     except (TypeError, ValueError):
         return None
+
+
+def _regex_validation_error(pattern: str) -> str:
+    if len(pattern) > MAX_REGEX_PATTERN_LENGTH:
+        return f"regex exceeds {MAX_REGEX_PATTERN_LENGTH} characters"
+    if NESTED_QUANTIFIER_PATTERN.search(pattern):
+        return "regex contains nested quantifiers"
+    return ""
 
 
 class _SafeFormat(dict):

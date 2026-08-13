@@ -1,0 +1,32 @@
+services:
+  cyberdefense-agent:
+    build:
+      context: .
+    image: ai-cyberdefense-agent:local
+    command:
+      - --events
+      - samples/events.jsonl
+      - --memory-db
+      - data/incidents.sqlite
+      - --html-report
+      - reports/report.html
+    volumes:
+      - ./samples:/app/samples:ro
+      - ./data:/app/data
+      - ./reports:/app/reports
+
+  demo:
+    build:
+      context: .
+    image: ai-cyberdefense-agent:local
+    command:
+      - demo
+      - --project-root
+      - /app
+      - --output-dir
+      - /app
+    volumes:
+      - ./data:/app/data
+      - ./reports:/app/reports
+    profiles:
+      - demo

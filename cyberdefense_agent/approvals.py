@@ -224,9 +224,13 @@ def _render_markdown(entries: list[ApprovalEntry], state: str) -> str:
                 f"- Note: {entry.decision_note or '-'}",
                 "",
                 "```text",
-                entry.command_preview,
+                _escape_markdown_fence(entry.command_preview),
                 "```",
                 "",
             ]
         )
     return "\n".join(lines)
+
+
+def _escape_markdown_fence(value: str) -> str:
+    return value.replace("```", "` ` `")

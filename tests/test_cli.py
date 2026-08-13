@@ -11,6 +11,12 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 
 
 class CliSmokeTests(unittest.TestCase):
+    def test_cli_version_flag(self):
+        result = self._run_agent("--version")
+
+        self.assertEqual(result.returncode, 0)
+        self.assertIn("cyberdefense-agent 0.1.0", result.stdout)
+
     def test_cli_json_output_contains_detected_incidents(self):
         result = self._run_agent(
             "--events",
@@ -53,6 +59,54 @@ class CliSmokeTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0)
         self.assertEqual(payload["import_diagnostics"]["event_count"], 1)
         self.assertEqual(payload["import_diagnostics"]["skipped_count"], 1)
+
+    def test_cli_validate_json_reports_field_coverage(self):
+        result = self._run_agent(
+            "validate",
+            "--events",
+            str(PROJECT_ROOT / "samples" / "events.jsonl"),
+            "--json",
+        )
+
+        payload = json.loads(result.stdout)
+
+        self.assertEqual(result.returncode, 0)
+        self.assertEqual(payload["status"], "ok")
+        self.assertEqual(payload["parser_format"], "jsonl")
+        self.assertGreater(payload["event_count"], 0)
+        self.assertGreater(payload["field_coverage"]["event_type"]["known_count"], 0)
+        self.assertIn("auth_failure", [entry["value"] for entry in payload["event_types"]])
+        self.assertEqual(len(payload["samples"]), 3)
+
+    def test_cli_validate_human_output_reports_parse_warnings(self):
+        with TemporaryDirectory(ignore_cleanup_errors=True) as directory:
+            path = Path(directory) / "events.jsonl"
+            path.write_text(
+                '{"timestamp":"2026-07-02T12:00:00Z","event_type":"auth_success"}\n'
+                '{"timestamp":',
+                encoding="utf-8",
+            )
+
+            result = self._run_agent("validate", "--events", str(path))
+
+        self.assertEqual(result.returncode, 0)
+        self.assertIn("Status: warning", result.stdout)
+        self.assertIn("Skipped records: 1", result.stdout)
+        self.assertIn("Parse issues:", result.stdout)
+
+    def test_cli_validate_missing_file_returns_error(self):
+        result = self._run_agent(
+            "validate",
+            "--events",
+            str(PROJECT_ROOT / "samples" / "does-not-exist.jsonl"),
+            "--json",
+        )
+
+        payload = json.loads(result.stdout)
+
+        self.assertEqual(result.returncode, 2)
+        self.assertEqual(payload["status"], "error")
+        self.assertIn("does-not-exist.jsonl", payload["input_path"])
 
     def test_cli_triage_updates_and_lists_incidents(self):
         with TemporaryDirectory(ignore_cleanup_errors=True) as directory:
@@ -275,6 +329,29 @@ rules:
         self.assertIn("windows", [pack["name"] for pack in packs])
         self.assertEqual(windows["name"], "windows")
         self.assertGreaterEqual(windows["rule_count"], 1)
+
+    def test_cli_demo_generates_mvp_artifacts(self):
+        with TemporaryDirectory(ignore_cleanup_errors=True) as directory:
+            result = self._run_agent(
+                "demo",
+                "--project-root",
+                str(PROJECT_ROOT),
+                "--output-dir",
+                directory,
+                "--json",
+            )
+
+            payload = json.loads(result.stdout)
+            html_report = Path(payload["html_report"])
+            response_bundle = Path(payload["response_bundle"])
+            memory_db = Path(payload["memory_db"])
+
+            self.assertEqual(result.returncode, 0)
+            self.assertGreater(payload["incident_count"], 0)
+            self.assertGreaterEqual(payload["campaign_count"], 1)
+            self.assertTrue(html_report.exists())
+            self.assertTrue(response_bundle.exists())
+            self.assertTrue(memory_db.exists())
 
     def test_cli_watch_reports_new_incidents_once(self):
         with TemporaryDirectory(ignore_cleanup_errors=True) as directory:

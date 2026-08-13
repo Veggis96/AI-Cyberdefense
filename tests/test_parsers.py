@@ -55,6 +55,17 @@ class ParserTests(unittest.TestCase):
         self.assertEqual(result.skipped_count, 1)
         self.assertIn("Expecting value", result.issues[0].message)
 
+    def test_jsonl_diagnostics_truncate_raw_payloads(self):
+        with TemporaryDirectory(ignore_cleanup_errors=True) as directory:
+            path = Path(directory) / "events.jsonl"
+            path.write_text('{"raw":"' + ("x" * 1000), encoding="utf-8")
+
+            result = parse_events_with_diagnostics(path, source_format="jsonl")
+
+        self.assertEqual(result.skipped_count, 1)
+        self.assertLess(len(result.issues[0].raw), 270)
+        self.assertTrue(result.issues[0].raw.endswith("...[truncated]"))
+
     def test_jsonl_accepts_utf8_bom(self):
         with TemporaryDirectory(ignore_cleanup_errors=True) as directory:
             path = Path(directory) / "events.jsonl"

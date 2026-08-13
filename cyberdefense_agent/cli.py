@@ -7,6 +7,7 @@ import sys
 import time
 from pathlib import Path
 
+from . import __version__
 from .approvals import ApprovalStore, VALID_APPROVAL_STATES
 from .baseline import load_baseline
 from .cases import CaseStore, VALID_CASE_STATES
@@ -163,10 +164,88 @@ def build_rule_pack_parser() -> argparse.ArgumentParser:
     return parser
 
 
+def build_demo_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(
+        prog="cyberdefense-agent demo",
+        description="Generate a complete local MVP demo bundle from repository samples.",
+    )
+    parser.add_argument(
+        "--project-root",
+        type=Path,
+        default=Path.cwd(),
+        help="Project root containing the samples directory. Defaults to the current directory.",
+    )
+    parser.add_argument(
+        "--output-dir",
+        type=Path,
+        default=Path.cwd(),
+        help="Directory where data/ and reports/ demo artifacts are written.",
+    )
+    parser.add_argument(
+        "--json",
+        action="store_true",
+        help="Print the demo summary as JSON.",
+    )
+    return parser
+
+
+def build_validate_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(
+        prog="cyberdefense-agent validate",
+        description="Validate event ingestion and show normalized field coverage.",
+    )
+    parser.add_argument(
+        "--events",
+        type=Path,
+        required=True,
+        help="Path to an event file.",
+    )
+    parser.add_argument(
+        "--format",
+        choices=[
+            "auto",
+            "jsonl",
+            "csv",
+            "nginx",
+            "nginx_access",
+            "cloud",
+            "cloud_json",
+            "aws_cloudtrail",
+            "azure_ad",
+            "okta",
+            "m365",
+        ],
+        default="auto",
+        help="Input event format. Auto-detects from extension by default.",
+    )
+    parser.add_argument(
+        "--sample-size",
+        type=int,
+        default=3,
+        help="Number of normalized sample events to include.",
+    )
+    parser.add_argument(
+        "--json",
+        action="store_true",
+        help="Print machine-readable validation JSON.",
+    )
+    return parser
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="cyberdefense-agent",
         description="Analyze security events and recommend defensive response actions.",
+        epilog=(
+            "Subcommands: validate, demo, watch, feedback, triage, case, approvals, "
+            "entity, rule-pack. Use 'cyberdefense-agent <subcommand> --help' "
+            "for subcommand options."
+        ),
+    )
+    parser.add_argument(
+        "--version",
+        action="version",
+        version=f"%(prog)s {__version__}",
     )
     add_analysis_arguments(parser)
     return parser
@@ -288,6 +367,10 @@ def main() -> int:
         return rule_pack_main(sys.argv[2:])
     if len(sys.argv) > 1 and sys.argv[1] == "watch":
         return watch_main(sys.argv[2:])
+    if len(sys.argv) > 1 and sys.argv[1] == "demo":
+        return demo_main(sys.argv[2:])
+    if len(sys.argv) > 1 and sys.argv[1] == "validate":
+        return validate_main(sys.argv[2:])
 
     args = build_parser().parse_args()
     report = run_analysis(args)
@@ -319,6 +402,249 @@ def run_analysis(args: argparse.Namespace):
     if args.response_bundle:
         write_response_bundle(report, args.response_bundle)
     return report
+
+
+def demo_main(argv: list[str]) -> int:
+    args = build_demo_parser().parse_args(argv)
+    project_root = args.project_root.resolve()
+    output_dir = args.output_dir.resolve()
+    analysis_args = build_demo_analysis_args(project_root, output_dir)
+
+    if not analysis_args.events.exists():
+        raise SystemExit(
+            f"Demo sample file not found: {analysis_args.events}. "
+            "Run from the project root or pass --project-root."
+        )
+
+    analysis_args.memory_db.parent.mkdir(parents=True, exist_ok=True)
+    analysis_args.html_report.parent.mkdir(parents=True, exist_ok=True)
+
+    report = run_analysis(analysis_args)
+    summary = {
+        "incident_count": len(report.incidents),
+        "campaign_count": len(report.campaigns),
+        "memory_db": str(analysis_args.memory_db),
+        "html_report": str(analysis_args.html_report),
+        "response_bundle": str(analysis_args.response_bundle),
+    }
+    if args.json:
+        print(json.dumps(summary, indent=2))
+    else:
+        print("Demo bundle generated.")
+        print(f"Incidents: {summary['incident_count']}")
+        print(f"Campaigns: {summary['campaign_count']}")
+        print(f"Memory DB: {summary['memory_db']}")
+        print(f"HTML report: {summary['html_report']}")
+        print(f"Response bundle: {summary['response_bundle']}")
+    return 0
+
+
+def build_demo_analysis_args(project_root: Path, output_dir: Path) -> argparse.Namespace:
+    samples = project_root / "samples"
+    reports = output_dir / "reports"
+    data = output_dir / "data"
+    local_rules = samples / "local_rules.yaml"
+    return argparse.Namespace(
+        events=samples / "events.jsonl",
+        format="auto",
+        json=False,
+        config=samples / "config.json",
+        memory_db=data / "incidents.sqlite",
+        baseline=samples / "baseline.json",
+        html_report=reports / "report.html",
+        threat_intel=samples / "threat_intel.json",
+        rules=[local_rules] if local_rules.exists() else [],
+        rule_pack=["windows", "web", "identity", "network", "exfiltration"],
+        response_bundle=reports / "response.json",
+    )
+
+
+def validate_main(argv: list[str]) -> int:
+    args = build_validate_parser().parse_args(argv)
+    try:
+        parse_result = parse_events_with_diagnostics(args.events, source_format=args.format)
+        summary = build_validation_summary(
+            path=args.events,
+            requested_format=args.format,
+            events=parse_result.events,
+            diagnostics=parse_result.to_dict(),
+            sample_size=max(0, args.sample_size),
+        )
+    except (OSError, ValueError) as exc:
+        summary = {
+            "input_path": str(args.events),
+            "requested_format": args.format,
+            "parser_format": _infer_parser_format(args.events, args.format),
+            "status": "error",
+            "error": str(exc),
+        }
+        if args.json:
+            print(json.dumps(summary, indent=2))
+        else:
+            print(f"Validation failed: {exc}")
+        return 2
+
+    if args.json:
+        print(json.dumps(summary, indent=2))
+    else:
+        print(render_validation_summary(summary))
+    return 0 if summary["status"] != "error" else 2
+
+
+def build_validation_summary(
+    path: Path,
+    requested_format: str,
+    events: list,
+    diagnostics: dict,
+    sample_size: int,
+) -> dict:
+    fields = [
+        "timestamp",
+        "event_type",
+        "source_ip",
+        "destination_ip",
+        "username",
+        "asset",
+        "asset_criticality",
+    ]
+    event_count = len(events)
+    field_coverage = {
+        field: _field_coverage(events, field)
+        for field in fields
+    }
+    event_types = _top_counts(event.event_type for event in events)
+    assets = _top_counts(event.asset for event in events if event.asset != "unknown")
+    source_ips = _top_counts(
+        event.source_ip for event in events if event.source_ip != "unknown"
+    )
+    detail_keys = _top_counts(
+        key
+        for event in events
+        for key in (event.details or {}).keys()
+    )
+    status = "ok"
+    warnings = []
+    if event_count == 0:
+        status = "warning"
+        warnings.append("No events were parsed.")
+    if diagnostics.get("skipped_count", 0):
+        status = "warning"
+        warnings.append(f"{diagnostics['skipped_count']} malformed record(s) were skipped.")
+    for field in ("timestamp", "event_type", "asset"):
+        if field_coverage[field]["known_count"] == 0 and event_count:
+            status = "warning"
+            warnings.append(f"No parsed events had a known {field}.")
+    return {
+        "input_path": str(path),
+        "requested_format": requested_format,
+        "parser_format": _infer_parser_format(path, requested_format),
+        "status": status,
+        "warnings": warnings,
+        "event_count": event_count,
+        "skipped_count": diagnostics.get("skipped_count", 0),
+        "field_coverage": field_coverage,
+        "event_types": event_types,
+        "top_assets": assets,
+        "top_source_ips": source_ips,
+        "detail_keys": detail_keys,
+        "issues": diagnostics.get("issues", []),
+        "samples": [event.to_dict() for event in events[:sample_size]],
+    }
+
+
+def render_validation_summary(summary: dict) -> str:
+    lines = [
+        "Validation summary",
+        f"Input: {summary['input_path']}",
+        f"Format: {summary['requested_format']} -> {summary['parser_format']}",
+        f"Status: {summary['status']}",
+        f"Parsed events: {summary['event_count']}",
+        f"Skipped records: {summary['skipped_count']}",
+    ]
+    if summary.get("warnings"):
+        lines.append("Warnings:")
+        lines.extend(f" - {warning}" for warning in summary["warnings"])
+    lines.append("Field coverage:")
+    for field, coverage in summary["field_coverage"].items():
+        lines.append(
+            f" - {field}: {coverage['known_count']}/{coverage['event_count']} "
+            f"known ({coverage['known_percent']}%)"
+        )
+    if summary["event_types"]:
+        lines.append("Event types:")
+        lines.extend(
+            f" - {item['value']}: {item['count']}"
+            for item in summary["event_types"][:10]
+        )
+    if summary["top_assets"]:
+        lines.append("Top assets:")
+        lines.extend(
+            f" - {item['value']}: {item['count']}"
+            for item in summary["top_assets"][:10]
+        )
+    if summary["top_source_ips"]:
+        lines.append("Top source IPs:")
+        lines.extend(
+            f" - {item['value']}: {item['count']}"
+            for item in summary["top_source_ips"][:10]
+        )
+    if summary["issues"]:
+        lines.append("Parse issues:")
+        for issue in summary["issues"][:5]:
+            lines.append(f" - line {issue.get('line_number')}: {issue.get('message')}")
+    if summary["samples"]:
+        lines.append("Normalized samples:")
+        for sample in summary["samples"]:
+            lines.append(f" - {json.dumps(sample, sort_keys=True)}")
+    return "\n".join(lines)
+
+
+def _field_coverage(events: list, field: str) -> dict:
+    event_count = len(events)
+    known_count = sum(
+        1
+        for event in events
+        if getattr(event, field) not in (None, "", "unknown")
+    )
+    unknown_count = event_count - known_count
+    known_percent = round((known_count / event_count) * 100, 1) if event_count else 0.0
+    return {
+        "event_count": event_count,
+        "known_count": known_count,
+        "unknown_count": unknown_count,
+        "known_percent": known_percent,
+    }
+
+
+def _top_counts(values) -> list[dict[str, int | str]]:
+    counts: dict[str, int] = {}
+    for value in values:
+        if value in (None, ""):
+            continue
+        key = str(value)
+        counts[key] = counts.get(key, 0) + 1
+    return [
+        {"value": value, "count": count}
+        for value, count in sorted(counts.items(), key=lambda item: (-item[1], item[0]))
+    ]
+
+
+def _infer_parser_format(path: Path, requested_format: str) -> str:
+    requested_format = requested_format.lower()
+    if requested_format != "auto":
+        if requested_format in ("nginx_access",):
+            return "nginx"
+        if requested_format in ("cloud", "cloud_json"):
+            return "cloud"
+        return requested_format
+    suffix = path.suffix.lower()
+    if suffix == ".jsonl":
+        return "jsonl"
+    if suffix == ".csv":
+        return "csv"
+    if suffix in (".log", ".access"):
+        return "nginx"
+    return "unknown"
 
 
 def watch_main(argv: list[str]) -> int:

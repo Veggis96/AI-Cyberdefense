@@ -80,12 +80,14 @@ flowchart LR
 
 ## Technology Stack
 
-- Python 3.10+
+- Python 3.11+
 - Standard-library CLI with `argparse`
 - SQLite for local incident memory
 - JSON, JSONL, CSV, YAML-style rule files, nginx-style logs
 - HTML report generation
 - `unittest` test suite
+- Ruff linting and formatting
+- Docker and Terraform examples for local lab automation
 
 The project intentionally keeps runtime dependencies minimal.
 
@@ -104,8 +106,10 @@ pyproject.toml              Local package metadata
 
 ## Prerequisites
 
-- Python 3.10 or newer
+- Python 3.11 or newer
 - PowerShell, Bash, or another terminal
+- Optional: Docker Desktop for containerized runs
+- Optional: Terraform for local Docker infrastructure automation
 
 ## Installation
 
@@ -159,6 +163,47 @@ python -m cyberdefense_agent rule-pack list
 python -m cyberdefense_agent rule-pack show --name windows
 ```
 
+## Docker
+
+Build and run the default sample in a container:
+
+```powershell
+docker compose run --rm cyberdefense-agent
+```
+
+Generate the full local demo bundle with Docker:
+
+```powershell
+docker compose --profile demo run --rm demo
+```
+
+Both commands mount `samples/` read-only and write generated artifacts to local `data/` and `reports/` folders.
+
+You can also run the image directly:
+
+```powershell
+docker build -t ai-cyberdefense-agent:local .
+docker run --rm -v ${PWD}/samples:/app/samples:ro -v ${PWD}/reports:/app/reports -v ${PWD}/data:/app/data ai-cyberdefense-agent:local --events samples/events.jsonl --html-report reports/report.html --memory-db data/incidents.sqlite
+```
+
+## Terraform
+
+The `terraform/local-docker` example builds the Docker image and runs the CLI through the local Docker Engine:
+
+```powershell
+cd terraform/local-docker
+terraform init
+terraform apply
+```
+
+Override the command when needed:
+
+```powershell
+terraform apply -var='container_command=["demo","--project-root","/app","--output-dir","/app"]'
+```
+
+This Terraform setup is intended for local lab automation. It requires Terraform, Docker Desktop or another Docker Engine, and access to download the `kreuzwerker/docker` provider during `terraform init`.
+
 ## Usage Examples
 
 Parse nginx-style access logs:
@@ -200,10 +245,45 @@ python -m cyberdefense_agent watch --events samples/events.jsonl --interval 5
 ## Testing
 
 ```powershell
-python -m unittest discover -s tests
+python -m unittest discover -s tests -t .
 ```
 
 The test suite covers CLI behavior, parsers, detection rules, custom rules, dashboards, entity memory, response export, and threat intelligence.
+
+## Developer Workflow
+
+Install local development tools:
+
+```powershell
+python -m pip install -e ".[dev]"
+```
+
+Run the main quality checks:
+
+```powershell
+python -m ruff check .
+python -m unittest discover -s tests -t .
+```
+
+Generate a coverage summary:
+
+```powershell
+python -m coverage run -m unittest discover -s tests -t .
+python -m coverage report --show-missing
+```
+
+On Windows, the helper script wraps common tasks:
+
+```powershell
+.\scripts\dev.ps1 install
+.\scripts\dev.ps1 lint
+.\scripts\dev.ps1 test
+.\scripts\dev.ps1 coverage
+.\scripts\dev.ps1 docker-build
+.\scripts\dev.ps1 terraform-fmt
+```
+
+Continuous integration runs Python tests on 3.11 and 3.12, Ruff linting, Docker image build and smoke test, and Terraform formatting/validation.
 
 ## Security And Privacy Considerations
 

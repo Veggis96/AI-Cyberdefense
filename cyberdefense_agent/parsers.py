@@ -10,6 +10,9 @@ from typing import Any, Protocol
 from .events import SecurityEvent
 
 
+MAX_DIAGNOSTIC_RAW_LENGTH = 240
+
+
 @dataclass(frozen=True)
 class ParseIssue:
     line_number: int
@@ -69,7 +72,7 @@ class JsonLinesParser:
                         ParseIssue(
                             line_number=line_number,
                             message=str(exc),
-                            raw=stripped,
+                            raw=_diagnostic_raw(stripped),
                         )
                     )
         return ParseResult(events=events, issues=issues)
@@ -185,11 +188,11 @@ class CsvParser:
 
     def _canonical_details(self, row: dict[str, Any]) -> dict[str, Any]:
         details = {}
-        for field, aliases in self.DETAIL_ALIASES.items():
+        for detail_field, aliases in self.DETAIL_ALIASES.items():
             for alias in aliases:
                 value = row.get(alias)
                 if value not in (None, ""):
-                    details[field] = value
+                    details[detail_field] = value
                     break
         return details
 
@@ -240,7 +243,7 @@ class NginxAccessLogParser:
                         ParseIssue(
                             line_number=line_number,
                             message="Invalid nginx access log entry",
-                            raw=stripped,
+                            raw=_diagnostic_raw(stripped),
                         )
                     )
                     continue
@@ -294,9 +297,9 @@ class CloudSaasJsonParser:
                     try:
                         events.append(self._event_from_record(json.loads(stripped), path))
                     except json.JSONDecodeError as exc:
-                        issues.append(ParseIssue(line_number, str(exc), stripped))
+                        issues.append(ParseIssue(line_number, str(exc), _diagnostic_raw(stripped)))
         except json.JSONDecodeError as exc:
-            issues.append(ParseIssue(1, str(exc), raw_text[:240]))
+            issues.append(ParseIssue(1, str(exc), _diagnostic_raw(raw_text)))
         return ParseResult(events=events, issues=issues)
 
     def _event_from_record(self, record: dict[str, Any], path: Path) -> SecurityEvent:
@@ -364,6 +367,12 @@ def _safe_int(value: str) -> int:
         return int(value)
     except ValueError:
         return 0
+
+
+def _diagnostic_raw(value: str) -> str:
+    if len(value) <= MAX_DIAGNOSTIC_RAW_LENGTH:
+        return value
+    return value[:MAX_DIAGNOSTIC_RAW_LENGTH] + "...[truncated]"
 
 
 def _records_from_json_document(raw: Any) -> list[dict[str, Any]]:
